@@ -5,8 +5,11 @@ provider "kubernetes" {
 }
 
 provider "helm" {
-  # Inherits from the Kubernetes provider automatically
-  # No need for duplicate `kubernetes` block
+  kubernetes {
+    host                   = aws_eks_cluster.eks.endpoint
+    cluster_ca_certificate = base64decode(aws_eks_cluster.eks.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.eks.token
+  }
 }
 
 data "aws_eks_cluster_auth" "eks" {
