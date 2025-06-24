@@ -7,17 +7,17 @@ provider "kubernetes" {
 provider "helm" {
   kubernetes {
     host                   = data.aws_eks_cluster.main.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.main.certificate_authority[0].data)
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.main.certificate_authority_data)
     token                  = data.aws_eks_cluster_auth.main.token
   }
 }
 
 data "aws_eks_cluster_auth" "eks" {
-    name = aws_eks_cluster.eks.name
+   name = aws_eks_cluster.eks.name
 }
 resource "helm_release" "nginx_ingress" {
-    name       = "nginx-ingress"
-    repository = "https://kubernetes.github.io/ingress-nginx"
+   name       = "nginx-ingress"
+   repository = "https://kubernetes.github.io/ingress-nginx"
     chart      = "ingress-nginx"
     version    = "4.12.0"
     namespace  = "ingress-nginx"
@@ -51,12 +51,12 @@ resource "helm_release" "cert_manager" {
 #==================================================
 
 resource "helm_release" "argocd" {
-    name             = "argocd"
-    repository       = "https://argoproj.github.io/argo-helm"
-    chart            = "argo-cd"
-    version          = "5.51.6"
-    namespace        = "argocd"
-    create_namespace = true
-    values = [file("${path.module}/argocd-values.yaml")]
-    depends_on = [ helm_release.nginx_ingress, helm_release.cert_manager]
+  name             = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  version          = "5.51.6"
+  namespace        = "argocd"
+  create_namespace = true
+  values           = [file("${path.module}/argocd-values.yaml")]
+  depends_on       = [helm_release.nginx_ingress, helm_release.cert_manager]
 }
