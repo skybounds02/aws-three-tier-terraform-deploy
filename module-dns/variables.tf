@@ -3,7 +3,6 @@ variable "environment" {
   type        = string
   default     = "staging"
 }
-
 variable "domain-name" {
   description = "Base domain name for the application"
   type        = string
