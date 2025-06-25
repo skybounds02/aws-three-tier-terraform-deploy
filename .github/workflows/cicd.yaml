@@ -84,6 +84,9 @@ jobs:
           echo "::add-mask::$ARGOCD_PASSWORD"
           echo "ARGOCD_PASSWORD=${ARGOCD_PASSWORD}" >> $GITHUB_ENV
           echo "Password retrieved and masked"
+      - name: Show password (masked)
+        run: |
+          echo "Password is: $ARGOCD_PASSWORD"  # Will appear as *** in logs due to masking
 
      # - name: Terraform Destroy
       #  run: terraform destroy -auto-approve 
