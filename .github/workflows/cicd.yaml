@@ -91,72 +91,35 @@ jobs:
       - name: Terraform Destroy
         run: terraform destroy -auto-approve 
 
-      - name: Check Running EC2 Instances
+      - name: List Active AWS Resources (Post-Destroy)
         run: |
-          echo "Checking for running EC2 instances..."
+          echo "=== ACTIVE AWS RESOURCES ==="
+          echo "Note: This is informational only - workflow will not fail"
+          echo -e "\nEC2 INSTANCES:"
           aws ec2 describe-instances \
-            --query 'Reservations[].Instances[?State.Name==`running`].[InstanceId, Tags[?Key==`Name`].Value | [0], State.Name]' \
-            --output table
-
-      - name: Check Load Balancers
-        run: |
-          echo "Checking for active Load Balancers..."
+            --query 'Reservations[].Instances[?State.Name==`running`].[InstanceId, Tags[?Key==`Name`].Value | [0], InstanceType, State.Name]' \
+            --output table || echo "No EC2 access"
+          echo -e "\nVPCs:"
+          aws ec2 describe-vpcs \
+            --query 'Vpcs[?IsDefault==`false`].[VpcId, CidrBlock, IsDefault]' \
+            --output table || echo "No VPC access"
+          echo -e "\nLOAD BALANCERS:"
           aws elbv2 describe-load-balancers \
             --query 'LoadBalancers[].[LoadBalancerName, Type, State.Code]' \
-            --output table
+            --output table || echo "No ELB access"
 
-      - name: Check RDS Instances
-        run: |
-          echo "Checking for RDS instances..."
-          aws rds describe-db-instances \
-            --query 'DBInstances[?DBInstanceStatus!=`deleted`].[DBInstanceIdentifier, DBInstanceStatus]' \
-            --output table
+          echo -e "\nS3 BUCKETS:"
+          aws s3 ls || echo "No S3 access"
 
-      - name: Check S3 Buckets
-        run: |
-          echo "Listing all S3 buckets..."
-          aws s3 ls
+          echo -e "\nEBS VOLUMES (non-attached):"
+          aws ec2 describe-volumes \
+            --filters Name=status,Values=available \
+            --query 'Volumes[].[VolumeId, Size, AvailabilityZone]' \
+            --output table || echo "No EBS access"
 
-      - name: Check VPC Resources
-        run: |
-          echo "Checking VPC resources..."
-          # Check for non-default VPCs
-          aws ec2 describe-vpcs \
-            --query 'Vpcs[?IsDefault==`false`].[VpcId, CidrBlock]' \
-            --output table
-          
-          # Check for Internet Gateways
-          aws ec2 describe-internet-gateways \
-            --query 'InternetGateways[].InternetGatewayId' \
-            --output table
-
-      - name: Check Lambda Functions
-        run: |
-          echo "Checking Lambda functions..."
+          echo -e "\nLAMBDA FUNCTIONS:"
           aws lambda list-functions \
-            --query 'Functions[].FunctionName' \
-            --output table
+            --query 'Functions[].[FunctionName, Runtime]' \
+            --output table || echo "No Lambda access"
 
-      - name: Check EKS Clusters
-        run: |
-          echo "Checking EKS clusters..."
-          aws eks list-clusters \
-            --query 'clusters' \
-            --output table
-
-      - name: Generate Summary Report
-        run: |
-          echo "=== AWS RESOURCE SUMMARY ===" > resource-report.txt
-          echo "EC2 Instances:" >> resource-report.txt
-          aws ec2 describe-instances --query 'length(Reservations[].Instances[?State.Name==`running`])' >> resource-report.txt
-          
-          echo "Load Balancers:" >> resource-report.txt
-          aws elbv2 describe-load-balancers --query 'length(LoadBalancers)' >> resource-report.txt
-          
-          echo "RDS Instances:" >> resource-report.txt
-          aws rds describe-db-instances --query 'length(DBInstances)' >> resource-report.txt
-          
-          echo "S3 Buckets:" >> resource-report.txt
-          aws s3 ls | wc -l >> resource-report.txt
-          
-          cat resource-report.txt
+          echo -e "\n=== RESOURCE LISTING COMPLETE ==="
