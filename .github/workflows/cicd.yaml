@@ -90,3 +90,73 @@ jobs:
 
       - name: Terraform Destroy
         run: terraform destroy -auto-approve 
+
+      - name: Check Running EC2 Instances
+        run: |
+          echo "Checking for running EC2 instances..."
+          aws ec2 describe-instances \
+            --query 'Reservations[].Instances[?State.Name==`running`].[InstanceId, Tags[?Key==`Name`].Value | [0], State.Name]' \
+            --output table
+
+      - name: Check Load Balancers
+        run: |
+          echo "Checking for active Load Balancers..."
+          aws elbv2 describe-load-balancers \
+            --query 'LoadBalancers[].[LoadBalancerName, Type, State.Code]' \
+            --output table
+
+      - name: Check RDS Instances
+        run: |
+          echo "Checking for RDS instances..."
+          aws rds describe-db-instances \
+            --query 'DBInstances[?DBInstanceStatus!=`deleted`].[DBInstanceIdentifier, DBInstanceStatus]' \
+            --output table
+
+      - name: Check S3 Buckets
+        run: |
+          echo "Listing all S3 buckets..."
+          aws s3 ls
+
+      - name: Check VPC Resources
+        run: |
+          echo "Checking VPC resources..."
+          # Check for non-default VPCs
+          aws ec2 describe-vpcs \
+            --query 'Vpcs[?IsDefault==`false`].[VpcId, CidrBlock]' \
+            --output table
+          
+          # Check for Internet Gateways
+          aws ec2 describe-internet-gateways \
+            --query 'InternetGateways[].InternetGatewayId' \
+            --output table
+
+      - name: Check Lambda Functions
+        run: |
+          echo "Checking Lambda functions..."
+          aws lambda list-functions \
+            --query 'Functions[].FunctionName' \
+            --output table
+
+      - name: Check EKS Clusters
+        run: |
+          echo "Checking EKS clusters..."
+          aws eks list-clusters \
+            --query 'clusters' \
+            --output table
+
+      - name: Generate Summary Report
+        run: |
+          echo "=== AWS RESOURCE SUMMARY ===" > resource-report.txt
+          echo "EC2 Instances:" >> resource-report.txt
+          aws ec2 describe-instances --query 'length(Reservations[].Instances[?State.Name==`running`])' >> resource-report.txt
+          
+          echo "Load Balancers:" >> resource-report.txt
+          aws elbv2 describe-load-balancers --query 'length(LoadBalancers)' >> resource-report.txt
+          
+          echo "RDS Instances:" >> resource-report.txt
+          aws rds describe-db-instances --query 'length(DBInstances)' >> resource-report.txt
+          
+          echo "S3 Buckets:" >> resource-report.txt
+          aws s3 ls | wc -l >> resource-report.txt
+          
+          cat resource-report.txt
