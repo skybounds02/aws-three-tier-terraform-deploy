@@ -88,5 +88,5 @@ jobs:
    #     run: |
     #      echo "Password is: $ARGOCD_PASSWORD"  # Will appear as *** in logs due to masking
 
-       - name: Terraform Destroy
-         run: terraform destroy -auto-approve 
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve 
